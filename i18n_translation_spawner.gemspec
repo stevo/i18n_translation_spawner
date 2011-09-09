@@ -9,5 +9,5 @@ Gem::Specification.new do |s|
   s.files       = Dir['lib/**/*.rb']
   s.add_runtime_dependency 'ya2yaml', '>= 0.3'
   s.homepage    =
-    'http://rubygems.org/gems/i18n_translation_spawner'
+    'https://github.com/stevo/i18n_translation_spawner'
 end
