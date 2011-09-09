@@ -1,5 +1,5 @@
 require "yaml/encoding"
-require "i18n_translation_spawners/string"
+require "i18n_translation_spawner/string"
 require "i18n_translation_spawner/hash"
 
 module I18n
