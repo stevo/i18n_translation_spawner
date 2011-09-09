@@ -1,0 +1,147 @@
+h1. Introduction
+
+I18n translation spawner (ITS) addresses the issue of having to add translation keys to multiple translation files
+manually as you develop an app.
+
+Whenever I18n::MissingTranslationData exception is caught, ITS tries to add a new key into your translation file,
+generates new translation for it and does it within all locales you have defined in your app.
+
+
+h1. Installation
+
+Nothing fancy, just add @gem 'i18n_translation_spawner'@ and run @bundle install@
+
+
+Then add following file in an initializer, (e.g. /config/initializers/i18n.rb)
+
+<pre><code>
+    I18n.exception_handler = I18n::TranslationSpawner.new
+</code></pre>
+
+
+h1. Configuration
+
+There is a number custimization possible to achieve with ITS
+
+
+h2. Automatic translations
+
+If you know you want some keys being translated in a specific way, you can add those to @default_translations@
+
+<pre><code>
+    translations_spawner = I18n::TranslationSpawner.new
+
+    translations_spawner.default_translations = {"new.button_submit" => "Create",
+    "edit.button_submit" => "Save changes",
+    "save" => {"en-GB" => "Save", "nb-NO" => "Lagre" }}
+
+    I18n.exception_handler = translations_spawner
+</code></pre>
+
+
+Then for instance the following key @customer.new.button_submit@ will be automatically assigned with translation of "Create"
+
+h2. Automatic prefix removal
+
+By default ITS humanizes the last part of key ("link_new_candidate" becomes "Link new candidate").
+If you want to automatically strip some of prefixes before humanization occurs, specify those in @removable_prefixes@
+
+<pre><code>
+    translations_spawner = I18n::TranslationSpawner.new
+
+    translations_spawner.removable_prefixes = %w(link table_header label header)
+
+    I18n.exception_handler = translations_spawner
+</code></pre>
+
+Then for instance the following key @customer.new.link_new_candidate@ will be automatically assigned with translation of "New candidate"
+
+h2. Skipping some locale during automatic key spawning
+
+As easy as
+
+<pre><code>
+ translations_spawner = I18n::TranslationSpawner.new
+
+ translations_spawner.skip_locales =["nb-NO"]
+
+ I18n.exception_handler = translations_spawner
+</code></pre>
+
+
+h2. Hacking automatic key translations
+
+For instance, you can try handling translations to different languages automatically.
+*Note, that this code is not super-duper-awesome. It just shows the basic how-to*
+
+<pre><code>
+translations_spawner = I18n::TranslationSpawner.new
+
+require "net/http"
+require "json"
+require "iconv"
+ts.key_translations_handler = lambda do |key, locale, spawner|
+    default = spawner.default_translation_for_key(key, locale)
+
+    begin
+        source_language = 'en'
+        target_language = locale.split('-').first.downcase
+
+        target_language = case target_language
+            when 'nb' then
+            'no'
+            else
+            target_language
+        end
+
+        json_string = Net::HTTP.get('translate.google.pl', "/translate_a/t?client=t&text=#{default}&hl=#{target_language}&sl=#{source_language}&tl=#{target_language}&multires=1&otf=1&ssel=0&tsel=0&sc=1").gsub(/,{2,}/, ',')
+        ic = Iconv.new('UTF-8//IGNORE', 'UTF-8')
+        valid_string = ic.iconv(json_string)
+
+        return JSON.parse(valid_string).flatten.first
+    rescue
+        default
+    end
+end
+I18n.exception_handler = translations_spawner
+</code></pre>
+
+h2. Hacking file selection
+
+If you have more complex structure of yaml files placement, you can always add some custom logic for it.
+In this example, the first part of key can be a directory name, and in case of no directory with that name, it can be a file name.
+If the directory is found, the second part of key is the file name within it (imagine having files like @common.en-GB.yml@ and @customer/common.en-GB.yml@)
+
+<pre><code>
+    translations_spawner = I18n::TranslationSpawner.new
+    translations_spawner.file_path_decoder = lambda do |key, locale, _|
+        tokens = key.to_s.split('.')
+        file_path_tokens = if File.file?(File.join(Rails.root, 'config', 'locales', tokens.first, "#{tokens.second}.#{locale.to_s}.yml"))
+            tokens[0..1]
+        elsif File.file?(File.join(Rails.root, 'config', 'locales', "#{tokens.first}.#{locale.to_s}.yml"))
+            tokens.first
+        else
+            nil
+        end
+        raise I18n::TranslationSpawner::CannotDecodeTranslationFilePath unless file_path_tokens
+        File.join(Rails.root, "config/locales", *file_path_tokens)+".#{locale.to_s}.yml"
+    end
+    I18n.exception_handler = translations_spawner
+</code></pre>
+
+h2. Hacking exception catching
+
+If you have some custom translation inheritance mechanism that is based on catching I18n::MissingTranslationData, you can always
+incorporate it as well. In this case, the prefix is being stripped and translating re-attempted before re-raising an exception.
+
+<pre><code>
+    translations_spawner = I18n::TranslationSpawner.new
+    translations_spawner.exception_handler = lambda do |exception, locale, key, spawner, options|
+        if exception.is_a?(I18n::MissingTranslationData) and %w(customer admin).include?(key.to_s.split('.').first)
+            I18n.translate((key.to_s.split('.')[1..-1].join('.')), options.merge({:raise => true})) rescue spawner.handle_exception(exception, locale, key, options)
+        else
+            spawner.handle_exception(exception, locale, key, options)
+        end
+    end
+    I18n.exception_handler = translations_spawner
+</code></pre>

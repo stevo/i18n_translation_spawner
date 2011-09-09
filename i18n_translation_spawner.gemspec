@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'i18n_translation_spawner'
-  s.version     = '0.0.2'
+  s.version     = '0.0.3'
   s.date        = '2011-09-09'
   s.summary     = "Automatic i18n keys generator"
   s.description = "Gem for automatic creation i18n keys in your YAML files as you develop"
