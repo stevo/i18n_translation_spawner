@@ -12,7 +12,7 @@ h1. Installation
 Nothing fancy, just add @gem 'i18n_translation_spawner'@ and run @bundle install@
 
 
-Then add following file in an initializer, (e.g. /config/initializers/i18n.rb)
+Then add following line in an initializer, (e.g. /config/initializers/i18n.rb)
 
 <pre><code>
     I18n.exception_handler = I18n::TranslationSpawner.new
@@ -26,7 +26,7 @@ There is a number custimization possible to achieve with ITS
 
 h2. Automatic translations
 
-If you know you want some keys being translated in a specific way, you can add those to @default_translations@
+If you want some keys being translated in a specific way, you can add those to @default_translations@
 
 <pre><code>
     translations_spawner = I18n::TranslationSpawner.new
@@ -80,7 +80,7 @@ translations_spawner = I18n::TranslationSpawner.new
 require "net/http"
 require "json"
 require "iconv"
-ts.key_translations_handler = lambda do |key, locale, spawner|
+translations_spawner.key_translations_handler = lambda do |key, locale, spawner|
     default = spawner.default_translation_for_key(key, locale)
 
     begin
