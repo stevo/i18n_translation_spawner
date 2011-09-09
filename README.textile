@@ -21,7 +21,7 @@ Then add following line in an initializer, (e.g. /config/initializers/i18n.rb)
 
 h1. Configuration
 
-There is a number custimization possible to achieve with ITS
+There is a number customizations possible to achieve with ITS
 
 
 h2. Automatic translations
