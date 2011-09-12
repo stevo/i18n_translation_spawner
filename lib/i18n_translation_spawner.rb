@@ -67,7 +67,7 @@ module I18n
     end
 
     def default_translation(key, locale)
-      if ranslations_handler.respond_to?(:call)
+      if translations_handler.respond_to?(:call)
          translations_handler(key, locale, self)
       else
         _key = key.dup
