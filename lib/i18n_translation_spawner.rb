@@ -11,7 +11,7 @@ module I18n
     attr_accessor_with_default :skip_locales, []
     attr_accessor_with_default :removable_prefixes, %w()
     attr_accessor_with_default :default_translations, {}
-    attr_accessor :exception_handler, :key_translations_handler, :translations_handler, :file_path_decoder
+    attr_accessor :exception_handler, :key_translations_handler, :translations_handler, :file_path_decoder, :cannot_decode_translation_file_path_handler
 
     private
 
@@ -49,8 +49,12 @@ module I18n
             File.open(path, 'w') { |f| f.write(YAML.unescape(translations_hash.ya2yaml)) }
           end
         rescue CannotDecodeTranslationFilePath
-          Rails.logger.info "=== Cannot access translation file for #{key.to_s}"
-          return(options[:rescue_format] == :html ? exception.html_message : exception.message)
+          if cannot_decode_translation_file_path_handler.respond_to?(:call)
+            cannot_decode_translation_file_path_handler.call(key,locale,options,exception)
+          else
+            Rails.logger.info "=== Cannot access translation file for #{key.to_s}"
+            return(options[:rescue_format] == :html ? exception.html_message : exception.message)
+          end
         end
       end
       translation(key, locale.to_s)
@@ -68,7 +72,7 @@ module I18n
 
     def default_translation(key, locale)
       if translations_handler.respond_to?(:call)
-         translations_handler(key, locale, self)
+        translations_handler(key, locale, self)
       else
         _key = key.dup
         while _key.present?
@@ -100,10 +104,10 @@ module I18n
 
     def handle_exception(exception, locale, key, options)
       case exception
-        when I18n::MissingTranslationData
-          spawn_translation_key(key, locale, options, exception)
-        else
-          raise exception
+      when I18n::MissingTranslationData
+        spawn_translation_key(key, locale, options, exception)
+      else
+        raise exception
       end
     end
 
