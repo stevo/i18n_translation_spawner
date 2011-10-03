@@ -46,7 +46,7 @@ module I18n
             translations_hash = YAML::load_file(path)
             hash_to_merge = "#{_locale.to_s}.#{key}".to_hash(translation(key, _locale.to_s)).deep_stringify_keys!
             translations_hash = translations_hash.deep_merge(hash_to_merge).to_ordered_hash
-            File.open(path, 'w') { |f| f.write(YAML.unescape(translations_hash.ya2yaml)) }
+            File.open(path, 'w') { |f| f.write(YAML.unescape(translations_hash.ya2yaml.sub(/---\s*/,''))) }
           end
         rescue CannotDecodeTranslationFilePath
           if cannot_decode_translation_file_path_handler.respond_to?(:call)
