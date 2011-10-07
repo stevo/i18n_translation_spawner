@@ -40,7 +40,7 @@ module I18n
     end
 
     def spawn_translation_key(key, locale, options, exception)
-      I18n.available_locales.reject { |l| skip_locales.include?(l) }.each do |_locale|
+      I18n.available_locales.reject { |l| skip_locales.map(&:to_s).include?(l.to_s) }.each do |_locale|
         begin
           decode_file_path(key, _locale).tap do |path|
             translations_hash = YAML::load_file(path)
