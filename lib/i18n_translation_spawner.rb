@@ -8,12 +8,16 @@ module I18n
     class CannotDecodeTranslationFilePath < StandardError;
     end
 
-    attr_accessor_with_default :skip_locales, []
-    attr_accessor_with_default :removable_prefixes, %w()
-    attr_accessor_with_default :default_translations, {}
-    attr_accessor :exception_handler, :key_translations_handler, :translations_handler, :file_path_decoder, :cannot_decode_translation_file_path_handler
+    attr_accessor :skip_locales, :removable_prefixes, :default_translations, :exception_handler, :key_translations_handler,
+                  :translations_handler, :file_path_decoder, :cannot_decode_translation_file_path_handler
 
     private
+
+    def initialize
+      @skip_locales = []
+      @removable_prefixes = []
+      @default_translations = {}
+    end
 
     def translation_for_key(key, locale)
       if key_translations_handler.respond_to?(:call)
@@ -46,11 +50,11 @@ module I18n
             translations_hash = YAML::load_file(path)
             hash_to_merge = "#{_locale.to_s}.#{key}".to_hash(translation(key, _locale.to_s)).deep_stringify_keys!
             translations_hash = translations_hash.deep_merge(hash_to_merge).to_ordered_hash
-            File.open(path, 'w') { |f| f.write(YAML.unescape(translations_hash.ya2yaml.sub(/---\s*/,''))) }
+            File.open(path, 'w') { |f| f.write(YAML.unescape(translations_hash.ya2yaml.sub(/---\s*/, ''))) }
           end
         rescue CannotDecodeTranslationFilePath
           if cannot_decode_translation_file_path_handler.respond_to?(:call)
-            cannot_decode_translation_file_path_handler.call(key,locale,options,exception)
+            cannot_decode_translation_file_path_handler.call(key, locale, options, exception)
           else
             Rails.logger.info "=== Cannot access translation file for #{key.to_s}"
             return(options[:rescue_format] == :html ? exception.html_message : exception.message)
@@ -104,10 +108,10 @@ module I18n
 
     def handle_exception(exception, locale, key, options)
       case exception
-      when I18n::MissingTranslationData
-        spawn_translation_key(key, locale, options, exception)
-      else
-        raise exception
+        when I18n::MissingTranslationData
+          spawn_translation_key(key, locale, options, exception)
+        else
+          raise exception
       end
     end
 
