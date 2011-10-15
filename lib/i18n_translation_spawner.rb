@@ -1,15 +1,16 @@
 require "yaml/encoding"
 require "i18n_translation_spawner/string"
 require "i18n_translation_spawner/hash"
+require "i18n_translation_spawner/lambda_accessor"
 
 module I18n
   class TranslationSpawner
-
+    include LambdaAccessor
     class CannotDecodeTranslationFilePath < StandardError;
     end
 
-    attr_accessor :skip_locales, :removable_prefixes, :default_translations, :exception_handler, :key_translations_handler,
-                  :translations_handler, :file_path_decoder, :cannot_decode_translation_file_path_handler
+    attr_accessor :skip_locales, :removable_prefixes, :default_translations, :exception_handler,
+                  :translations_handler, :cannot_decode_translation_file_path_handler
 
     private
 
@@ -19,13 +20,15 @@ module I18n
       @default_translations = {}
     end
 
-    def translation_for_key(key, locale)
-      if key_translations_handler.respond_to?(:call)
-        key_translations_handler.call(key, locale, self)
-      else
-        default_translation_for_key(key, locale)
-      end
-    end
+    lambda_accessor :translation_for_key, :file_path_decoder
+
+    #def translation_for_key(key, locale)
+      #if key_translations_handler.respond_to?(:call)
+        #key_translations_handler.call(key, locale, self)
+      #else
+        #default_translation_for_key(key, locale)
+      #end
+    #end
 
     def translation(key, locale)
       if translations_handler.respond_to?(:call)
@@ -35,18 +38,18 @@ module I18n
       end
     end
 
-    def decode_file_path(key, locale)
-      if file_path_decoder.respond_to?(:call)
-        file_path_decoder.call(key, locale, self)
-      else
-        default_decode_file_path(key, locale)
-      end
-    end
+    #def decode_file_path(key, locale)
+      #if file_path_decoder.respond_to?(:call)
+        #file_path_decoder.call(key, locale, self)
+      #else
+        #default_decode_file_path(key, locale)
+      #end
+    #end
 
     def spawn_translation_key(key, locale, options, exception)
       I18n.available_locales.reject { |l| skip_locales.map(&:to_s).include?(l.to_s) }.each do |_locale|
         begin
-          decode_file_path(key, _locale).tap do |path|
+          file_path_decoder(key, _locale).tap do |path|
             translations_hash = YAML::load_file(path)
             hash_to_merge = "#{_locale.to_s}.#{key}".to_hash(translation(key, _locale.to_s)).deep_stringify_keys!
             translations_hash = translations_hash.deep_merge(hash_to_merge).to_ordered_hash
@@ -66,7 +69,8 @@ module I18n
 
     public
 
-    def default_decode_file_path(key, locale)
+    def default_file_path_decoder_handler(*args)
+      key, locale = args
       if File.file?(path = File.join(Rails.root, "config/locales", "#{locale.to_s}.yml"))
         path
       else
@@ -94,7 +98,8 @@ module I18n
       end
     end
 
-    def default_translation_for_key(key, locale)
+    def default_translation_for_key_handler(*args)
+      key, locale = args
       key.split('.').last.sub(/\A#{removable_prefixes.map { |prefix| prefix+'_' }.join('|')}/, '').humanize
     end
 
