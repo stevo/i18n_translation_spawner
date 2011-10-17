@@ -1,4 +1,3 @@
-require "yaml/encoding"
 require "i18n_translation_spawner/string"
 require "i18n_translation_spawner/hash"
 require "i18n_translation_spawner/lambda_accessor"
