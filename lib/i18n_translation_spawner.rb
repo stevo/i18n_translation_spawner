@@ -1,3 +1,7 @@
+unless RUBY_VERSION >= '1.9'
+  require "yaml/encoding"
+end
+
 require "i18n_translation_spawner/string"
 require "i18n_translation_spawner/hash"
 require "i18n_translation_spawner/lambda_accessor"
@@ -21,14 +25,6 @@ module I18n
 
     lambda_accessor :translation_for_key, :file_path_decoder
 
-    #def translation_for_key(key, locale)
-      #if key_translations_handler.respond_to?(:call)
-        #key_translations_handler.call(key, locale, self)
-      #else
-        #default_translation_for_key(key, locale)
-      #end
-    #end
-
     def translation(key, locale)
       if translations_handler.respond_to?(:call)
         translations_handler.call(key, locale, self)
@@ -37,22 +33,19 @@ module I18n
       end
     end
 
-    #def decode_file_path(key, locale)
-      #if file_path_decoder.respond_to?(:call)
-        #file_path_decoder.call(key, locale, self)
-      #else
-        #default_decode_file_path(key, locale)
-      #end
-    #end
-
     def spawn_translation_key(key, locale, options, exception)
       I18n.available_locales.reject { |l| skip_locales.map(&:to_s).include?(l.to_s) }.each do |_locale|
         begin
-          file_path_decoder(key, _locale).tap do |path|
-            translations_hash = YAML::load_file(path)
-            hash_to_merge = "#{_locale.to_s}.#{key}".to_hash(translation(key, _locale.to_s)).deep_stringify_keys!
-            translations_hash = translations_hash.deep_merge(hash_to_merge).to_ordered_hash
-            File.open(path, 'w') { |f| f.write(YAML.unescape(translations_hash.ya2yaml.sub(/---\s*/, ''))) }
+          begin
+            I18n.translate(key, options.merge({:locale => _locale, :raise => true}))
+          rescue I18n::MissingTranslationData
+            file_path_decoder(key, _locale).tap do |path|
+              translations_hash = YAML::load_file(path)
+              hash_to_merge = "#{_locale.to_s}.#{key}".to_hash(translation(key, _locale.to_s)).deep_stringify_keys!
+              translations_hash = translations_hash.deep_merge(hash_to_merge).to_ordered_hash
+              translation_content = translations_hash.ya2yaml.sub(/---\s*/, '')
+              File.open(path, 'w') { |f| f.write(RUBY_VERSION >= '1.9' ? translation_content : YAML.unescape(translation_content)) }
+            end
           end
         rescue CannotDecodeTranslationFilePath
           if cannot_decode_translation_file_path_handler.respond_to?(:call)
