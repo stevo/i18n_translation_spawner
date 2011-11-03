@@ -20,7 +20,7 @@ module I18n
     def initialize
       @skip_locales = []
       @removable_prefixes = []
-      @default_translations = {}
+      @default_translations = {}.with_indifferent_access
     end
 
     lambda_accessor :translation_for_key, :file_path_decoder
@@ -74,7 +74,7 @@ module I18n
       if translations_handler.respond_to?(:call)
         translations_handler(key, locale, self)
       else
-        _key = key.dup
+        _key = key.to_s.dup
         while _key.present?
           if (val = default_translations[_key]).present?
             if val.is_a?(Hash)
